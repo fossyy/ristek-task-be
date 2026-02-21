@@ -11,12 +11,12 @@ import (
 
 type Server struct {
 	addr       string
-	port       uint16
+	port       string
 	repository *repository.Queries
 	jwt        *jwt.JWT
 }
 
-func New(addr string, port uint16, repository *repository.Queries, jwt *jwt.JWT) *Server {
+func New(addr string, port string, repository *repository.Queries, jwt *jwt.JWT) *Server {
 	return &Server{
 		addr:       addr,
 		port:       port,
@@ -55,7 +55,7 @@ func router(repository *repository.Queries, jwt *jwt.JWT) *http.ServeMux {
 func (s *Server) Start() error {
 	r := router(s.repository, s.jwt)
 	hs := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.addr, s.port),
+		Addr:    fmt.Sprintf("%s:%s", s.addr, s.port),
 		Handler: middleware.Handler(middleware.CORS(r)),
 	}
 

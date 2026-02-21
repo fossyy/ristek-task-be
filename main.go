@@ -5,23 +5,22 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"ristek-task-be/internal/config"
 	"ristek-task-be/internal/db/sqlc/repository"
 	"ristek-task-be/internal/jwt"
 	"ristek-task-be/internal/server"
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	if _, err := os.Stat(".env"); err == nil {
-		if err = godotenv.Load(".env"); err != nil {
-			log.Printf("Warning: Failed to load .env file: %s", err)
-		}
+	conf, err := config.MustLoad()
+	if err != nil {
+		log.Fatalf("failed to load config: %s", err)
 	}
 
 	errChan := make(chan error, 1)
@@ -29,18 +28,10 @@ func main() {
 
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
-	addr := "localhost"
-	port := uint16(8080)
-
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL is required")
-	}
-
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	connect, err := pgxpool.New(ctx, dbURL)
+	connect, err := pgxpool.New(ctx, conf.DatabaseURL())
 	if err != nil {
 		panic(err)
 	}
@@ -48,12 +39,12 @@ func main() {
 	repo := repository.New(connect)
 	j := jwt.New("yomama")
 	go func() {
-		s := server.New(addr, port, repo, j)
+		s := server.New(conf.Addr(), conf.Port(), repo, j)
 		err = s.Start()
 		errChan <- err
 	}()
 
-	log.Printf("Server is running on %s:%d", addr, port)
+	log.Printf("Server is running on %s:%s", conf.Addr(), conf.Port())
 
 	select {
 	case err = <-errChan:
