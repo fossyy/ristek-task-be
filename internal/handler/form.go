@@ -553,6 +553,20 @@ func (h *Handler) FormResponsesPost(w http.ResponseWriter, r *http.Request) {
 		questionMap[q.ID] = q
 	}
 
+	allOptions, err := h.repository.GetOptionsByFormID(ctx, formID)
+	if err != nil {
+		internalServerError(w, err)
+		log.Printf("failed to get options: %s", err)
+		return
+	}
+	optionLabels := make(map[uuid.UUID]map[string]struct{})
+	for _, o := range allOptions {
+		if _, ok := optionLabels[o.QuestionID]; !ok {
+			optionLabels[o.QuestionID] = make(map[string]struct{})
+		}
+		optionLabels[o.QuestionID][o.Label] = struct{}{}
+	}
+
 	answerMap := make(map[uuid.UUID]string, len(req.Answers))
 	for _, a := range req.Answers {
 		qid, err := uuid.Parse(a.QuestionID)
@@ -560,10 +574,32 @@ func (h *Handler) FormResponsesPost(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, errors.New("invalid question_id: "+a.QuestionID))
 			return
 		}
-		if _, exists := questionMap[qid]; !exists {
+		q, exists := questionMap[qid]
+		if !exists {
 			badRequest(w, errors.New("question not found in form: "+a.QuestionID))
 			return
 		}
+
+		if a.Answer != "" && isChoiceType(q.Type) {
+			validLabels := optionLabels[qid]
+			switch q.Type {
+			case repository.QuestionTypeMultipleChoice, repository.QuestionTypeDropdown:
+				if _, ok := validLabels[a.Answer]; !ok {
+					badRequest(w, errors.New("invalid answer for question \""+q.Title+"\": \""+a.Answer+"\" is not a valid option"))
+					return
+				}
+			case repository.QuestionTypeCheckbox:
+				parts := strings.Split(a.Answer, ",")
+				for _, part := range parts {
+					label := strings.TrimSpace(part)
+					if _, ok := validLabels[label]; !ok {
+						badRequest(w, errors.New("invalid answer for question \""+q.Title+"\": \""+label+"\" is not a valid option"))
+						return
+					}
+				}
+			}
+		}
+
 		answerMap[qid] = a.Answer
 	}
 
@@ -645,7 +681,7 @@ func (h *Handler) FormResponsesGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	form, err := h.repository.GetFormByID(ctx, formID)
@@ -663,6 +699,17 @@ func (h *Handler) FormResponsesGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	questions, err := h.repository.GetQuestionsByFormID(ctx, formID)
+	if err != nil {
+		internalServerError(w, err)
+		log.Printf("failed to get questions: %s", err)
+		return
+	}
+	questionMeta := make(map[uuid.UUID]repository.Question, len(questions))
+	for _, q := range questions {
+		questionMeta[q.ID] = q
+	}
+
 	responses, err := h.repository.GetFormResponsesByFormID(ctx, formID)
 	if err != nil {
 		internalServerError(w, err)
@@ -670,25 +717,57 @@ func (h *Handler) FormResponsesGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseItem struct {
-		ID          string `json:"id"`
-		SubmittedAt string `json:"submitted_at"`
-		UserID      string `json:"user_id,omitempty"`
+	type answerItem struct {
+		QuestionID    string `json:"question_id"`
+		QuestionTitle string `json:"question_title"`
+		QuestionType  string `json:"question_type"`
+		Answer        string `json:"answer"`
 	}
+	type responseItem struct {
+		ID          string       `json:"id"`
+		UserID      string       `json:"user_id,omitempty"`
+		SubmittedAt time.Time    `json:"submitted_at"`
+		Answers     []answerItem `json:"answers"`
+	}
+
 	items := make([]responseItem, 0, len(responses))
 	for _, resp := range responses {
+		answers, err := h.repository.GetAnswersByResponseID(ctx, resp.ID)
+		if err != nil {
+			internalServerError(w, err)
+			log.Printf("failed to get answers for response %s: %s", resp.ID, err)
+			return
+		}
+
+		answerItems := make([]answerItem, 0, len(answers))
+		for _, a := range answers {
+			text := ""
+			if a.AnswerText.Valid {
+				text = a.AnswerText.String
+			}
+			title := ""
+			qtype := ""
+			if q, ok := questionMeta[a.QuestionID]; ok {
+				title = q.Title
+				qtype = string(q.Type)
+			}
+			answerItems = append(answerItems, answerItem{
+				QuestionID:    a.QuestionID.String(),
+				QuestionTitle: title,
+				QuestionType:  qtype,
+				Answer:        text,
+			})
+		}
+
 		uid := ""
 		if resp.UserID != nil {
 			uid = resp.UserID.String()
 		}
-		sat := ""
-		if resp.SubmittedAt.Valid {
-			sat = resp.SubmittedAt.Time.String()
-		}
 		items = append(items, responseItem{
 			ID:          resp.ID.String(),
-			SubmittedAt: sat,
 			UserID:      uid,
+			SubmittedAt: resp.SubmittedAt.Time,
+			Answers:     answerItems,
 		})
 	}
 
