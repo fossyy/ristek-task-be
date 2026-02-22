@@ -1,0 +1,675 @@
+basePath: /
+definitions:
+  handler.AnswerInput:
+    properties:
+      answer:
+        type: string
+      question_id:
+        type: string
+    type: object
+  handler.AnswerResponse:
+    properties:
+      answer:
+        type: string
+      question_id:
+        type: string
+    type: object
+  handler.Auth:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handler.ChangePasswordRequest:
+    properties:
+      new_password:
+        type: string
+      old_password:
+        type: string
+    type: object
+  handler.CreateFormRequest:
+    properties:
+      description:
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/handler.QuestionInput'
+        type: array
+      title:
+        type: string
+    type: object
+  handler.FormResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/handler.QuestionResponse'
+        type: array
+      response_count:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handler.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  handler.QuestionInput:
+    properties:
+      options:
+        items:
+          $ref: '#/definitions/handler.QuestionOptionInput'
+        type: array
+      position:
+        type: integer
+      required:
+        type: boolean
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  handler.QuestionOptionInput:
+    properties:
+      label:
+        type: string
+      position:
+        type: integer
+    type: object
+  handler.QuestionOptionResponse:
+    properties:
+      id:
+        type: integer
+      label:
+        type: string
+      position:
+        type: integer
+    type: object
+  handler.QuestionResponse:
+    properties:
+      id:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/handler.QuestionOptionResponse'
+        type: array
+      position:
+        type: integer
+      required:
+        type: boolean
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  handler.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  handler.SubmitResponseRequest:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/handler.AnswerInput'
+        type: array
+    type: object
+  handler.SubmitResponseResponse:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/handler.AnswerResponse'
+        type: array
+      form_id:
+        type: string
+      id:
+        type: string
+      submitted_at:
+        type: string
+    type: object
+  handler.UpdateFormRequest:
+    properties:
+      description:
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/handler.QuestionInput'
+        type: array
+      title:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API for Ristek Task Backend
+  title: Ristek Task API
+  version: "1.0"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and password to receive access and refresh
+        tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.Auth'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: access_token, refresh_token, expires_in
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized (invalid credentials)
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Login
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate the given refresh token to log out the current session
+      parameters:
+      - description: Refresh token to invalidate
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Logout
+      tags:
+      - auth
+  /api/auth/logout/all:
+    delete:
+      description: Invalidate all refresh tokens for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Logout all sessions
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      description: Return profile information for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: id, email, created_at, updated_at
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /api/auth/me/password:
+    patch:
+      consumes:
+      - application/json
+      description: Update the password of the currently authenticated user
+      parameters:
+      - description: Old and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request (e.g. incorrect old password)
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid refresh token for a new access token and refresh
+        token pair
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: access_token, refresh_token, expires_in
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized (invalid or expired refresh token)
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email and password
+      parameters:
+      - description: Register credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.Auth'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad request (e.g. email already exists, password too short)
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Register a new user
+      tags:
+      - auth
+  /api/form:
+    post:
+      consumes:
+      - application/json
+      description: Create a new form with title, description, and questions for the
+        authenticated user
+      parameters:
+      - description: Form creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateFormRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created form
+          schema:
+            $ref: '#/definitions/handler.FormResponse'
+        "400":
+          description: Bad request (e.g. title is required)
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a form
+      tags:
+      - forms
+  /api/form/{id}:
+    delete:
+      description: Delete a form by ID. Only the form owner can delete it. Deletion
+        is blocked if the form already has responses
+      parameters:
+      - description: Form ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid form ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden (not the form owner)
+          schema:
+            type: string
+        "404":
+          description: Form not found
+          schema:
+            type: string
+        "409":
+          description: Conflict (form already has responses)
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete a form
+      tags:
+      - forms
+    get:
+      description: Retrieve a form and its questions by form ID (publicly accessible)
+      parameters:
+      - description: Form ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Form details
+          schema:
+            $ref: '#/definitions/handler.FormResponse'
+        "400":
+          description: Invalid form ID
+          schema:
+            type: string
+        "404":
+          description: Form not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Get a form
+      tags:
+      - forms
+    put:
+      consumes:
+      - application/json
+      description: Replace a form's title, description, and questions. Only the form
+        owner can update it
+      parameters:
+      - description: Form ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Form update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateFormRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated form
+          schema:
+            $ref: '#/definitions/handler.FormResponse'
+        "400":
+          description: Bad request (e.g. title is required)
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden (not the form owner)
+          schema:
+            type: string
+        "404":
+          description: Form not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update a form
+      tags:
+      - forms
+  /api/form/{id}/response:
+    post:
+      consumes:
+      - application/json
+      description: Submit answers to a form's questions. Authentication is optional
+        (anonymous submissions allowed). Required questions must be answered. Choice
+        answers must match valid options
+      parameters:
+      - description: Form ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Response answers payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SubmitResponseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Submitted response
+          schema:
+            $ref: '#/definitions/handler.SubmitResponseResponse'
+        "400":
+          description: Bad request (e.g. invalid answer, missing required question)
+          schema:
+            type: string
+        "404":
+          description: Form not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Submit a form response
+      tags:
+      - forms
+  /api/form/{id}/responses:
+    get:
+      description: Retrieve all submitted responses for a form. Only the form owner
+        can access this
+      parameters:
+      - description: Form ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of form responses with answers
+          schema:
+            items:
+              $ref: '#/definitions/handler.SubmitResponseResponse'
+            type: array
+        "400":
+          description: Invalid form ID
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "403":
+          description: Forbidden (not the form owner)
+          schema:
+            type: string
+        "404":
+          description: Form not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get form responses
+      tags:
+      - forms
+  /api/forms:
+    get:
+      description: Retrieve all forms belonging to the authenticated user, with optional
+        search, status filter, and sort options
+      parameters:
+      - description: Filter by title (case-insensitive)
+        in: query
+        name: search
+        type: string
+      - description: 'Filter by response status: has_responses | no_responses'
+        in: query
+        name: status
+        type: string
+      - description: 'Sort field: created_at (default) | updated_at'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort direction: newest (default) | oldest'
+        in: query
+        name: sort_dir
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of forms
+          schema:
+            items:
+              $ref: '#/definitions/handler.FormResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List forms
+      tags:
+      - forms
+  /health:
+    get:
+      description: Returns 200 OK if the server is running
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter your bearer token in the format: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

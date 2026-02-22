@@ -31,6 +31,14 @@ func internalServerError(w http.ResponseWriter, err error) {
 	_, _ = w.Write([]byte(err.Error()))
 }
 
+// HealthGet returns the health status of the server
+//
+//	@Summary		Health check
+//	@Description	Returns 200 OK if the server is running
+//	@Tags			health
+//	@Produce		plain
+//	@Success		200	{string}	string	"OK"
+//	@Router			/health [get]
 func (h *Handler) HealthGet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("OK"))

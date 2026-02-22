@@ -14,6 +14,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// @title Ristek Task API
+// @version 1.0
+// @description REST API for Ristek Task Backend
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter your bearer token in the format: Bearer {token}
+
+// @host localhost:8080
+// @BasePath /
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)

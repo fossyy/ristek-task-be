@@ -3,10 +3,13 @@ package server
 import (
 	"fmt"
 	"net/http"
+	_ "ristek-task-be/docs"
 	"ristek-task-be/internal/db/sqlc/repository"
 	"ristek-task-be/internal/handler"
 	"ristek-task-be/internal/jwt"
 	"ristek-task-be/internal/middleware"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type Server struct {
@@ -30,6 +33,7 @@ func router(repository *repository.Queries, jwt *jwt.JWT) *http.ServeMux {
 	h := handler.New(repository, jwt)
 
 	r.HandleFunc("GET /health", h.HealthGet)
+	r.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
 
 	authRoute := http.NewServeMux()
 	r.Handle("/api/auth/", http.StripPrefix("/api/auth", authRoute))

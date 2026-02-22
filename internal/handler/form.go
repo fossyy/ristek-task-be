@@ -137,6 +137,21 @@ func isChoiceType(t repository.QuestionType) bool {
 	return false
 }
 
+// FormsGet returns all forms owned by the authenticated user
+//
+//	@Summary		List forms
+//	@Description	Retrieve all forms belonging to the authenticated user, with optional search, status filter, and sort options
+//	@Tags			forms
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			search		query		string	false	"Filter by title (case-insensitive)"
+//	@Param			status		query		string	false	"Filter by response status: has_responses | no_responses"
+//	@Param			sort_by		query		string	false	"Sort field: created_at (default) | updated_at"
+//	@Param			sort_dir	query		string	false	"Sort direction: newest (default) | oldest"
+//	@Success		200	{array}		FormResponse	"List of forms"
+//	@Failure		401	{string}	string			"Unauthorized"
+//	@Failure		500	{string}	string			"Internal server error"
+//	@Router			/api/forms [get]
 func (h *Handler) FormsGet(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.currentUserID(r)
 	if !ok {
@@ -223,6 +238,20 @@ func (h *Handler) FormsGet(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(items)
 }
 
+// FormsPost creates a new form
+//
+//	@Summary		Create a form
+//	@Description	Create a new form with title, description, and questions for the authenticated user
+//	@Tags			forms
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		CreateFormRequest	true	"Form creation payload"
+//	@Success		201		{object}	FormResponse		"Created form"
+//	@Failure		400		{string}	string				"Bad request (e.g. title is required)"
+//	@Failure		401		{string}	string				"Unauthorized"
+//	@Failure		500		{string}	string				"Internal server error"
+//	@Router			/api/form [post]
 func (h *Handler) FormsPost(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.currentUserID(r)
 	if !ok {
@@ -270,6 +299,18 @@ func (h *Handler) FormsPost(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(buildFormResponse(form, questions, options))
 }
 
+// FormGet retrieves a single form by ID
+//
+//	@Summary		Get a form
+//	@Description	Retrieve a form and its questions by form ID (publicly accessible)
+//	@Tags			forms
+//	@Produce		json
+//	@Param			id	path		string	true	"Form ID (UUID)"
+//	@Success		200	{object}	FormResponse	"Form details"
+//	@Failure		400	{string}	string			"Invalid form ID"
+//	@Failure		404	{string}	string			"Form not found"
+//	@Failure		500	{string}	string			"Internal server error"
+//	@Router			/api/form/{id} [get]
 func (h *Handler) FormGet(w http.ResponseWriter, r *http.Request) {
 	formID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -310,6 +351,23 @@ func (h *Handler) FormGet(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(buildFormResponse(form, questions, options))
 }
 
+// FormPut updates an existing form
+//
+//	@Summary		Update a form
+//	@Description	Replace a form's title, description, and questions. Only the form owner can update it
+//	@Tags			forms
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string				true	"Form ID (UUID)"
+//	@Param			body	body		UpdateFormRequest	true	"Form update payload"
+//	@Success		200		{object}	FormResponse		"Updated form"
+//	@Failure		400		{string}	string				"Bad request (e.g. title is required)"
+//	@Failure		401		{string}	string				"Unauthorized"
+//	@Failure		403		{string}	string				"Forbidden (not the form owner)"
+//	@Failure		404		{string}	string				"Form not found"
+//	@Failure		500		{string}	string				"Internal server error"
+//	@Router			/api/form/{id} [put]
 func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.currentUserID(r)
 	if !ok {
@@ -389,6 +447,22 @@ func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(buildFormResponse(updated, questions, options))
 }
 
+// FormDelete deletes a form
+//
+//	@Summary		Delete a form
+//	@Description	Delete a form by ID. Only the form owner can delete it. Deletion is blocked if the form already has responses
+//	@Tags			forms
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Form ID (UUID)"
+//	@Success		204
+//	@Failure		400	{string}	string	"Invalid form ID"
+//	@Failure		401	{string}	string	"Unauthorized"
+//	@Failure		403	{string}	string	"Forbidden (not the form owner)"
+//	@Failure		404	{string}	string	"Form not found"
+//	@Failure		409	{string}	string	"Conflict (form already has responses)"
+//	@Failure		500	{string}	string	"Internal server error"
+//	@Router			/api/form/{id} [delete]
 func (h *Handler) FormDelete(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.currentUserID(r)
 	if !ok {
@@ -508,6 +582,21 @@ type SubmitResponseResponse struct {
 	Answers     []AnswerResponse `json:"answers"`
 }
 
+// FormResponsesPost submits a response to a form
+//
+//	@Summary		Submit a form response
+//	@Description	Submit answers to a form's questions. Authentication is optional (anonymous submissions allowed). Required questions must be answered. Choice answers must match valid options
+//	@Tags			forms
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string					true	"Form ID (UUID)"
+//	@Param			body	body		SubmitResponseRequest	true	"Response answers payload"
+//	@Success		201		{object}	SubmitResponseResponse	"Submitted response"
+//	@Failure		400		{string}	string					"Bad request (e.g. invalid answer, missing required question)"
+//	@Failure		404		{string}	string					"Form not found"
+//	@Failure		500		{string}	string					"Internal server error"
+//	@Router			/api/form/{id}/response [post]
 func (h *Handler) FormResponsesPost(w http.ResponseWriter, r *http.Request) {
 	formID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -668,6 +757,21 @@ func (h *Handler) FormResponsesPost(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// FormResponsesGet retrieves all responses for a form
+//
+//	@Summary		Get form responses
+//	@Description	Retrieve all submitted responses for a form. Only the form owner can access this
+//	@Tags			forms
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Form ID (UUID)"
+//	@Success		200	{array}		SubmitResponseResponse	"List of form responses with answers"
+//	@Failure		400	{string}	string					"Invalid form ID"
+//	@Failure		401	{string}	string					"Unauthorized"
+//	@Failure		403	{string}	string					"Forbidden (not the form owner)"
+//	@Failure		404	{string}	string					"Form not found"
+//	@Failure		500	{string}	string					"Internal server error"
+//	@Router			/api/form/{id}/responses [get]
 func (h *Handler) FormResponsesGet(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.currentUserID(r)
 	if !ok {

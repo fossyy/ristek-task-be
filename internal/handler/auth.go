@@ -30,6 +30,18 @@ func isDuplicateError(err error) bool {
 	return false
 }
 
+// RegisterPost registers a new user account
+//
+//	@Summary		Register a new user
+//	@Description	Create a new user account with email and password
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		Auth	true	"Register credentials"
+//	@Success		201
+//	@Failure		400	{string}	string	"Bad request (e.g. email already exists, password too short)"
+//	@Failure		500	{string}	string	"Internal server error"
+//	@Router			/api/auth/register [post]
 func (h *Handler) RegisterPost(w http.ResponseWriter, r *http.Request) {
 	var register Auth
 	if err := json.NewDecoder(r.Body).Decode(&register); err != nil {
@@ -83,6 +95,19 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// RefreshPost refreshes the access token using a refresh token
+//
+//	@Summary		Refresh access token
+//	@Description	Exchange a valid refresh token for a new access token and refresh token pair
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		RefreshRequest	true	"Refresh token payload"
+//	@Success		200		{object}	map[string]interface{}	"access_token, refresh_token, expires_in"
+//	@Failure		400		{string}	string					"Bad request"
+//	@Failure		401		{string}	string					"Unauthorized (invalid or expired refresh token)"
+//	@Failure		500		{string}	string					"Internal server error"
+//	@Router			/api/auth/refresh [post]
 func (h *Handler) RefreshPost(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -164,6 +189,18 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// LogoutPost logs out the current session by invalidating the refresh token
+//
+//	@Summary		Logout
+//	@Description	Invalidate the given refresh token to log out the current session
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body	LogoutRequest	true	"Refresh token to invalidate"
+//	@Success		204
+//	@Failure		400	{string}	string	"Bad request"
+//	@Failure		500	{string}	string	"Internal server error"
+//	@Router			/api/auth/logout [post]
 func (h *Handler) LogoutPost(w http.ResponseWriter, r *http.Request) {
 	var req LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -189,6 +226,17 @@ func (h *Handler) LogoutPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// LogoutAllDelete logs out all sessions for the authenticated user
+//
+//	@Summary		Logout all sessions
+//	@Description	Invalidate all refresh tokens for the authenticated user
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		204
+//	@Failure		401	{string}	string	"Unauthorized"
+//	@Failure		500	{string}	string	"Internal server error"
+//	@Router			/api/auth/logout/all [delete]
 func (h *Handler) LogoutAllDelete(w http.ResponseWriter, r *http.Request) {
 	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userIDStr == "" {
@@ -214,6 +262,17 @@ func (h *Handler) LogoutAllDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// MeGet returns the profile of the currently authenticated user
+//
+//	@Summary		Get current user
+//	@Description	Return profile information for the authenticated user
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	map[string]interface{}	"id, email, created_at, updated_at"
+//	@Failure		401	{string}	string					"Unauthorized"
+//	@Failure		500	{string}	string					"Internal server error"
+//	@Router			/api/auth/me [get]
 func (h *Handler) MeGet(w http.ResponseWriter, r *http.Request) {
 	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userIDStr == "" {
@@ -256,6 +315,20 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
+// MePasswordPatch changes the password of the authenticated user
+//
+//	@Summary		Change password
+//	@Description	Update the password of the currently authenticated user
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body	ChangePasswordRequest	true	"Old and new password"
+//	@Success		204
+//	@Failure		400	{string}	string	"Bad request (e.g. incorrect old password)"
+//	@Failure		401	{string}	string	"Unauthorized"
+//	@Failure		500	{string}	string	"Internal server error"
+//	@Router			/api/auth/me/password [patch]
 func (h *Handler) MePasswordPatch(w http.ResponseWriter, r *http.Request) {
 	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userIDStr == "" {
@@ -320,6 +393,19 @@ func (h *Handler) MePasswordPatch(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// LoginPost authenticates a user and returns tokens
+//
+//	@Summary		Login
+//	@Description	Authenticate with email and password to receive access and refresh tokens
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		Auth	true	"Login credentials"
+//	@Success		200		{object}	map[string]interface{}	"access_token, refresh_token, expires_in"
+//	@Failure		400		{string}	string					"Bad request"
+//	@Failure		401		{string}	string					"Unauthorized (invalid credentials)"
+//	@Failure		500		{string}	string					"Internal server error"
+//	@Router			/api/auth/login [post]
 func (h *Handler) LoginPost(w http.ResponseWriter, r *http.Request) {
 	var login Auth
 	if err := json.NewDecoder(r.Body).Decode(&login); err != nil {
