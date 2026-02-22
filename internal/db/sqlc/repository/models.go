@@ -69,6 +69,13 @@ type Form struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type FormResponse struct {
+	ID          uuid.UUID
+	FormID      uuid.UUID
+	UserID      *uuid.UUID
+	SubmittedAt pgtype.Timestamptz
+}
+
 type Question struct {
 	ID       uuid.UUID
 	FormID   uuid.UUID
@@ -92,6 +99,14 @@ type RefreshToken struct {
 	Token     string
 	ExpiresAt pgtype.Timestamptz
 	CreatedAt pgtype.Timestamptz
+}
+
+type ResponseAnswer struct {
+	ID         int64
+	ResponseID uuid.UUID
+	QuestionID uuid.UUID
+	FormID     uuid.UUID
+	AnswerText pgtype.Text
 }
 
 type User struct {

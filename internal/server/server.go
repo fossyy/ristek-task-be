@@ -49,6 +49,9 @@ func router(repository *repository.Queries, jwt *jwt.JWT) *http.ServeMux {
 	formRoute.Handle("PUT /{id}", middleware.Auth(jwt)(http.HandlerFunc(h.FormPut)))
 	formRoute.Handle("DELETE /{id}", middleware.Auth(jwt)(http.HandlerFunc(h.FormDelete)))
 
+	formRoute.HandleFunc("POST /{id}/response", h.FormResponsesPost)
+	formRoute.Handle("GET /{id}/responses", middleware.Auth(jwt)(http.HandlerFunc(h.FormResponsesGet)))
+
 	return r
 }
 
