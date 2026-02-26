@@ -11,11 +11,13 @@ type Config interface {
 	Addr() string
 	Port() string
 	DatabaseURL() string
+	JwtSecret() string
 }
 type config struct {
 	addr        string
 	port        string
 	databaseURL string
+	jwtSecret   string
 }
 
 func (c *config) Addr() string {
@@ -30,10 +32,13 @@ func (c *config) DatabaseURL() string {
 	return c.databaseURL
 }
 
+func (c *config) JwtSecret() string { return c.jwtSecret }
+
 func parse() (*config, error) {
 	domain := getenv("ADDRESS", "0.0.0.0")
 	sshPort := getenv("PORT", "8080")
 	databaseURL := getenv("DATABASE_URL", "")
+	jwtSecret := getenv("JWT_SECRET", "yomama")
 
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable not set")
@@ -43,6 +48,7 @@ func parse() (*config, error) {
 		addr:        domain,
 		port:        sshPort,
 		databaseURL: databaseURL,
+		jwtSecret:   jwtSecret,
 	}, nil
 }
 

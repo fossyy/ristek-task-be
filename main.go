@@ -73,7 +73,7 @@ func main() {
 		return
 	}
 
-	j := jwt.New("yomama")
+	j := jwt.New(conf.JwtSecret())
 	go func() {
 		s := server.New(conf.Addr(), conf.Port(), repo, j)
 		err = s.Start()

@@ -44,9 +44,10 @@ Contoh:
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/ristek?sslmode=disable
 PORT=8080
+JWT_SECRET=your_secret_key
 ```
 
-> **Catatan:** Variabel `ADDRESS` bersifat opsional (default: `0.0.0.0`).
+> **Catatan:** Variabel `ADDRESS` dan `JWT_SECRET` bersifat opsional.
 
 ### 4. Install Dependencies
 
@@ -78,8 +79,9 @@ http://localhost:8080/swagger/index.html
 
 ## Environment Variables
 
-| Variable       | Wajib | Default     | Keterangan                            |
-|----------------|-------|-------------|---------------------------------------|
-| `DATABASE_URL` | ✅    | —           | PostgreSQL connection string          |
-| `PORT`         | ❌    | `8080`      | Port HTTP server                      |
-| `ADDRESS`      | ❌    | `0.0.0.0`   | Bind address HTTP server              |
+| Variable       | Wajib | Default   | Keterangan                            |
+|----------------|-------|-----------|---------------------------------------|
+| `DATABASE_URL` | ✅    | —         | PostgreSQL connection string          |
+| `PORT`         | ❌    | `8080`    | Port HTTP server                      |
+| `ADDRESS`      | ❌    | `0.0.0.0` | Bind address HTTP server              |
+| `JWT_SECRET`   | ❌    | `yomama`  | Secret key untuk signing JWT token   |
