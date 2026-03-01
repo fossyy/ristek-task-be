@@ -354,7 +354,7 @@ func (h *Handler) FormGet(w http.ResponseWriter, r *http.Request) {
 // FormPut updates an existing form
 //
 //	@Summary		Update a form
-//	@Description	Replace a form's title, description, and questions. Only the form owner can update it
+//	@Description	Replace a form's title, description, and questions. Only the form owner can update it. Editing is blocked if the form already has responses
 //	@Tags			forms
 //	@Accept			json
 //	@Produce		json
@@ -366,6 +366,7 @@ func (h *Handler) FormGet(w http.ResponseWriter, r *http.Request) {
 //	@Failure		401		{string}	string				"Unauthorized"
 //	@Failure		403		{string}	string				"Forbidden (not the form owner)"
 //	@Failure		404		{string}	string				"Form not found"
+//	@Failure		409		{string}	string				"Conflict (form already has responses)"
 //	@Failure		500		{string}	string				"Internal server error"
 //	@Router			/api/form/{id} [put]
 func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
@@ -410,6 +411,18 @@ func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hasResponses, err := h.repository.FormHasResponses(ctx, formID)
+	if err != nil {
+		internalServerError(w, err)
+		log.Printf("failed to check responses: %s", err)
+		return
+	}
+	if hasResponses {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte("form already has responses and cannot be edited"))
+		return
+	}
+
 	updated, err := h.repository.UpdateForm(ctx, repository.UpdateFormParams{
 		ID:    formID,
 		Title: req.Title,
@@ -450,7 +463,7 @@ func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
 // FormDelete deletes a form
 //
 //	@Summary		Delete a form
-//	@Description	Delete a form by ID. Only the form owner can delete it. Deletion is blocked if the form already has responses
+//	@Description	Delete a form by ID. Only the form owner can delete it
 //	@Tags			forms
 //	@Produce		json
 //	@Security		BearerAuth
@@ -460,7 +473,6 @@ func (h *Handler) FormPut(w http.ResponseWriter, r *http.Request) {
 //	@Failure		401	{string}	string	"Unauthorized"
 //	@Failure		403	{string}	string	"Forbidden (not the form owner)"
 //	@Failure		404	{string}	string	"Form not found"
-//	@Failure		409	{string}	string	"Conflict (form already has responses)"
 //	@Failure		500	{string}	string	"Internal server error"
 //	@Router			/api/form/{id} [delete]
 func (h *Handler) FormDelete(w http.ResponseWriter, r *http.Request) {
@@ -491,18 +503,6 @@ func (h *Handler) FormDelete(w http.ResponseWriter, r *http.Request) {
 
 	if form.UserID != userID {
 		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	hasResponses, err := h.repository.FormHasResponses(ctx, formID)
-	if err != nil {
-		internalServerError(w, err)
-		log.Printf("failed to check responses: %s", err)
-		return
-	}
-	if hasResponses {
-		w.WriteHeader(http.StatusConflict)
-		_, _ = w.Write([]byte("form already has responses and cannot be deleted"))
 		return
 	}
 

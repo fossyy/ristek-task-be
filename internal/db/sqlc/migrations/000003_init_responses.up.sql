@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE form_responses (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    form_id    UUID        NOT NULL REFERENCES forms(id) ON DELETE RESTRICT,
+    form_id    UUID        NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
     user_id    UUID        REFERENCES users(id) ON DELETE SET NULL,
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
